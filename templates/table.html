@@ -6,26 +6,11 @@
         {% if show_actions %}<th>Actions</th>{% endif %}
       </tr>
     </thead>
-    <tbody>
+    <tbody id="record-list">
       {% for row in rows %}
-        <tr>
-          {% for cell in row.cells %}<td>{{ cell }}</td>{% endfor %}
-          {% if show_actions %}
-            <td class="row-actions">
-              {% for a in row.actions %}
-                {% if a.post %}
-                  <form method="post" action="{{ a.url }}" class="inline">{% csrf_token %}
-                    <button type="submit" class="small {{ a.css }}">{{ a.label }}</button>
-                  </form>
-                {% else %}
-                  <a href="{{ a.url }}" class="btn small {{ a.css }}">{{ a.label }}</a>
-                {% endif %}
-              {% endfor %}
-            </td>
-          {% endif %}
-        </tr>
+        {% include 'table_row.html' %}
       {% empty %}
-        <tr><td colspan="{{ colspan }}">No records yet.</td></tr>
+        <tr class="empty-row"><td colspan="{{ colspan }}">No records yet.</td></tr>
       {% endfor %}
     </tbody>
   </table>

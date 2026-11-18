@@ -5,7 +5,7 @@
   <p class="lead">{{ page.lead }}</p>
 
   {% if form %}
-    <form id="f" class="data-form" method="post" novalidate>
+    <form id="f" class="data-form" method="post" novalidate data-ajax="1">
       {% csrf_token %}
       {% include 'form_fields.html' %}
       <p id="msg" role="alert">{% for error in form.non_field_errors %}{{ error }} {% endfor %}</p>
@@ -20,7 +20,7 @@
       </div>
     </form>
   {% else %}
-    <p class="lead">Only staff members can add or change records on this page.</p>
+    <p class="lead">Only the admin can add, edit or delete records on this page. You can view them below.</p>
   {% endif %}
 
   <h2>{{ page.table_title }}</h2>

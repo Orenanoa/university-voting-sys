@@ -147,3 +147,7 @@ STORAGES = {
     'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
     'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage'},
 }
+
+# True = only admin (staff) users can add/edit/delete records. Normal users can view and vote.
+# False = every logged-in user has full CRUD.
+STAFF_ONLY_EDITING = True

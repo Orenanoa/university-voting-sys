@@ -27,7 +27,10 @@ Deployed on Render: _paste the link here after deploying_
 
 - Models: Student, Election, Position, Candidate, Voter, Ballot
 - Full CRUD (create, read, update, delete) for every model
-- Authentication: login, logout, register; staff manage records, normal users view and vote
+- Authentication: login, logout, register
+- Roles: only the admin (staff user) can create, update and delete records and start or end elections;
+  normal users can view every page and cast ballots
+  (set `STAFF_ONLY_EDITING = False` in `voting_system/settings.py` to give every logged-in user full CRUD)
 - Ballot validation (election must be ongoing, one vote per position, approved candidates only)
 - Results page, custom Django admin theme, JavaScript form validation with success alerts
 

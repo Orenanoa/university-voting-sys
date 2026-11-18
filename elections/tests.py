@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User
 from django.core.management import call_command
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from .models import Ballot, Candidate, Election, Student, Voter
@@ -47,6 +47,22 @@ class VotingSystemTests(TestCase):
         self.client.post(reverse('students_delete', args=[student.pk]))
         self.assertFalse(Student.objects.filter(student_id='S010').exists())
 
+    @override_settings(STAFF_ONLY_EDITING=False)
+    def test_normal_user_has_full_crud_when_switched_off(self):
+        self.login('user1')
+        data = {'student_id': 'S012', 'first_name': 'Normal', 'last_name': 'User', 'student_gender': 'Male',
+                'course': 'Law', 'year_of_study': 1, 'session': 'Day'}
+        self.client.post(reverse('students'), data)
+        student = Student.objects.get(student_id='S012')
+        data['first_name'] = 'Edited'
+        self.client.post(reverse('students_edit', args=[student.pk]), data)
+        student.refresh_from_db()
+        self.assertEqual(student.first_name, 'Edited')
+        self.client.post(reverse('students_delete', args=[student.pk]))
+        self.assertFalse(Student.objects.filter(student_id='S012').exists())
+        self.assertContains(self.client.get(reverse('students')), 'Edit')
+
+    @override_settings(STAFF_ONLY_EDITING=True)
     def test_normal_user_cannot_add_student(self):
         self.login('user1')
         self.client.post(reverse('students'), {'student_id': 'S011', 'first_name': 'No', 'last_name': 'Way',
@@ -76,6 +92,23 @@ class VotingSystemTests(TestCase):
         president = Candidate.objects.get(student__first_name='Yusuf')
         self.client.post(reverse('ballot'), self.vote_data(voter, president, action='validate'))
         self.assertEqual(Ballot.objects.count(), 6)
+
+    def test_normal_user_can_only_view_and_vote(self):
+        self.login('user1')
+        page = self.client.get(reverse('students'))
+        self.assertNotContains(page, 'Delete')
+        self.assertNotContains(page, 'Edit')
+        student = Student.objects.first()
+        self.client.post(reverse('students_delete', args=[student.pk]))
+        self.assertTrue(Student.objects.filter(pk=student.pk).exists())
+        ballot = Ballot.objects.first()
+        self.client.post(reverse('ballot_delete', args=[ballot.pk]))
+        self.assertTrue(Ballot.objects.filter(pk=ballot.pk).exists())
+        pending = Election.objects.get(title='Faculty Representatives 2026')
+        self.client.post(reverse('election_start', args=[pending.pk]))
+        pending.refresh_from_db()
+        self.assertEqual(pending.status, 'Pending')
+        self.assertEqual(self.client.get(reverse('ballot')).status_code, 200)
 
     def test_no_voting_when_election_is_not_ongoing(self):
         self.election.end_election()

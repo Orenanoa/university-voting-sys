@@ -1,8 +1,11 @@
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.views import LoginView
 from django.db.models import Count
+from django.http import JsonResponse
+from django.template.loader import render_to_string
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
@@ -13,12 +16,25 @@ from .pages import PAGES
 
 # ---------- helpers ----------
 
-def staff_only(view):
-    """Only logged-in staff users may use this view."""
+def is_ajax(request):
+    """True when the page's JavaScript (static/js/script.js) sent the request."""
+    return request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+
+def can_edit(user):
+    """Only admin (staff) users can add, edit and delete records.
+    Set STAFF_ONLY_EDITING = False in settings.py to let every logged-in user do it."""
+    return user.is_staff or not getattr(settings, 'STAFF_ONLY_EDITING', False)
+
+
+def editor_only(view):
+    """Only users who are allowed to edit may use this view."""
     @login_required
     def wrapper(request, *args, **kwargs):
-        if not request.user.is_staff:
-            messages.error(request, 'Only staff members can do that.')
+        if not can_edit(request.user):
+            if is_ajax(request):
+                return JsonResponse({'ok': False, 'errors': ['Only the admin can do that.']}, status=403)
+            messages.error(request, 'Only the admin can do that.')
             return redirect('home')
         return view(request, *args, **kwargs)
     return wrapper
@@ -39,12 +55,12 @@ def row_actions(request, name, obj):
     actions = []
     if name == 'election':
         actions.append({'label': 'Candidates', 'css': 'blue', 'url': reverse('election_candidates', args=[obj.pk])})
-        if request.user.is_staff:
+        if can_edit(request.user):
             actions.append({'label': 'Start', 'css': 'green', 'post': True, 'url': reverse('election_start', args=[obj.pk])})
             actions.append({'label': 'End', 'css': 'red', 'post': True, 'url': reverse('election_end', args=[obj.pk])})
     if name == 'position':
         actions.append({'label': 'Candidates', 'css': 'blue', 'url': reverse('position_candidates', args=[obj.pk])})
-        if request.user.is_staff:
+        if can_edit(request.user):
             actions.append({'label': 'Add Candidate', 'css': 'green',
                             'url': reverse('candidate') + f'?candidate_position={obj.pk}'})
     if name == 'candidate':
@@ -52,22 +68,39 @@ def row_actions(request, name, obj):
     if name == 'voter':
         actions.append({'label': 'Vote', 'css': 'green',
                         'url': reverse('ballot') + f'?voter={obj.pk}&election={obj.election_id}&position={obj.position_id}'})
-    if request.user.is_staff:
+    if can_edit(request.user):
         actions.append({'label': 'Edit', 'css': 'dark', 'url': reverse(f'{name}_edit', args=[obj.pk])})
-        actions.append({'label': 'Delete', 'css': 'red', 'url': reverse(f'{name}_delete', args=[obj.pk])})
+        # 'remove' = the page's JavaScript removes the row without leaving the page
+        actions.append({'label': 'Remove', 'css': 'red', 'remove': True,
+                        'url': reverse(f'{name}_delete', args=[obj.pk])})
     return actions
+
+
+def has_actions_column(request, name):
+    """Same answer for every row, so a table that starts empty still has an Actions column."""
+    return can_edit(request.user) or name in ('election', 'position', 'candidate', 'voter')
+
+
+def build_row(request, name, obj):
+    page = PAGES[name]
+    return {'cells': [get_value(obj, attr) for header, attr in page['columns']],
+            'actions': row_actions(request, name, obj)}
+
+
+def row_html(request, name, obj):
+    """One finished <tr>, sent back to the page after a record is added."""
+    return render_to_string('table_row.html', {
+        'row': build_row(request, name, obj), 'show_actions': has_actions_column(request, name)}, request=request)
 
 
 def table_context(request, name, objects):
     """Turn a list of records into headers + rows for table.html."""
     page = PAGES[name]
-    rows = []
-    for obj in objects:
-        cells = [get_value(obj, attr) for header, attr in page['columns']]
-        rows.append({'cells': cells, 'actions': row_actions(request, name, obj)})
+    rows = [build_row(request, name, obj) for obj in objects]
     headers = [header for header, attr in page['columns']]
-    return {'headers': headers, 'rows': rows, 'colspan': len(headers) + 1,
-            'show_actions': any(row['actions'] for row in rows)}
+    show_actions = has_actions_column(request, name)
+    return {'headers': headers, 'rows': rows, 'show_actions': show_actions,
+            'colspan': len(headers) + (1 if show_actions else 0)}
 
 
 # ---------- authentication ----------
@@ -100,25 +133,41 @@ def home(request):
 
 @login_required
 def object_list(request, name):
-    """Read + Create: the form on top, the table below."""
+    """Read + Create: the form on top, the table below.
+    The page's JavaScript posts the form in the background (AJAX): the new row is sent back
+    and added to the table without reloading. Without JavaScript the normal redirect still works."""
     page = PAGES[name]
-    can_add = request.user.is_staff or page.get('open_to_all', False)
+    ajax = is_ajax(request)
+    can_add = can_edit(request.user) or page.get('open_to_all', False)
+    if request.method == 'POST' and ajax and not can_add:
+        return JsonResponse({'ok': False, 'errors': ['Only the admin can add records on this page.']}, status=403)
     form = None
     if can_add:
         form = page['form'](request.POST or None, initial=request.GET.dict())
         if request.method == 'POST' and form.is_valid():
             if request.POST.get('action') == 'validate':
+                if ajax:
+                    return JsonResponse({'ok': True, 'message': 'Ballot is valid and ready to submit.'})
                 messages.success(request, 'Ballot is valid and ready to submit.')
             else:
-                form.save()
-                messages.success(request, page.get('saved_message', page['title'] + ' saved successfully.'))
+                obj = form.save()
+                message = page.get('saved_message', page['title'] + ' saved successfully.')
+                if ajax:
+                    return JsonResponse({'ok': True, 'message': message, 'row': row_html(request, name, obj)})
+                messages.success(request, message)
                 return redirect(name)
+        elif request.method == 'POST' and ajax:
+            errors = []
+            for field, field_errors in form.errors.items():
+                label = form.fields[field].label if field in form.fields else ''
+                errors += [f'{label}: {e}' if label else str(e) for e in field_errors]
+            return JsonResponse({'ok': False, 'errors': errors}, status=400)
     context = table_context(request, name, page['model'].objects.all())
     context.update({'page': page, 'name': name, 'form': form})
     return render(request, 'object_page.html', context)
 
 
-@staff_only
+@editor_only
 def object_edit(request, name, pk):
     """Update."""
     page = PAGES[name]
@@ -131,13 +180,15 @@ def object_edit(request, name, pk):
     return render(request, 'object_edit.html', {'page': page, 'name': name, 'form': form})
 
 
-@staff_only
+@editor_only
 def object_delete(request, name, pk):
     """Delete (asks for confirmation first)."""
     page = PAGES[name]
     obj = get_object_or_404(page['model'], pk=pk)
     if request.method == 'POST':
         obj.delete()
+        if is_ajax(request):
+            return JsonResponse({'ok': True, 'message': page['title'] + ' removed successfully.'})
         messages.success(request, page['title'] + ' deleted successfully.')
         return redirect(name)
     return render(request, 'object_delete.html', {'page': page, 'name': name, 'object': obj})
@@ -146,7 +197,7 @@ def object_delete(request, name, pk):
 # ---------- election buttons ----------
 
 @require_POST
-@staff_only
+@editor_only
 def election_start(request, pk):
     election = get_object_or_404(Election, pk=pk)
     election.start_election()
@@ -155,7 +206,7 @@ def election_start(request, pk):
 
 
 @require_POST
-@staff_only
+@editor_only
 def election_end(request, pk):
     election = get_object_or_404(Election, pk=pk)
     election.end_election()
