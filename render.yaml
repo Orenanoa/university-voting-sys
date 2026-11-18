@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: iuiu-voting-system
+    runtime: python
+    plan: free
+    buildCommand: "./build.sh"
+    startCommand: "python manage.py migrate && python manage.py create_default_admin && python manage.py load_dummy_data && gunicorn voting_system.wsgi:application"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        generateValue: true

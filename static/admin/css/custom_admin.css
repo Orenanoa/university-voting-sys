@@ -1,0 +1,30 @@
+/* IUIU green and cornsilk theme for the Django admin */
+:root {
+  --primary: #14532d;
+  --secondary: #0f3f22;
+  --accent: #d9a406;
+  --link-fg: #14532d;
+  --link-hover-color: #0f3f22;
+  --body-bg: cornsilk;
+  --header-bg: #14532d;
+  --header-color: #ffffff;
+  --header-link-color: #ffffff;
+  --breadcrumbs-bg: #0f3f22;
+  --button-bg: #14532d;
+  --button-hover-bg: #0f3f22;
+  --default-button-bg: #14532d;
+  --default-button-hover-bg: #0f3f22;
+  --object-tools-bg: #14532d;
+  --object-tools-hover-bg: #0f3f22;
+}
+
+body { font-family: Georgia, 'Times New Roman', serif; }
+
+#header { background: #14532d; }
+
+.iuiu-brand { display: flex; align-items: center; gap: 10px; color: #fff; }
+.iuiu-brand img { width: 46px; height: 46px; object-fit: contain; background: cornsilk; border-radius: 50%; }
+.iuiu-brand span { font-size: 1.2rem; font-weight: bold; }
+
+.module h2, .module caption, .inline-group h2 { background: #14532d; color: #fff; }
+.delete-confirmation .button.cancel-link, a.deletelink { background: #b00020; }

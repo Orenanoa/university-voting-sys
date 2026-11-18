@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block title %}Home{% endblock %}
+{% block content %}
+  <h1>Welcome, {{ user.username }}</h1>
+  <p class="lead">Vote for the student leaders who will represent you.</p>
+
+  <section>
+    <h2>About this system</h2>
+    <p>
+      The university holds student elections every year, and counting paper ballots by hand is slow and open to mistakes.
+      This system moves the whole process online: the electoral officer creates an election, adds the positions up for grabs,
+      and registers the students who are standing as candidates.
+    </p>
+    <p>
+      Eligible students register as voters for an election. Once the election is started, each voter casts a ballot,
+      choosing one candidate for each position. The system checks that the ballot is valid and accepts only one ballot
+      per voter for each position.
+    </p>
+    <p>
+      When the election ends, the votes are counted automatically and the results are ready to publish.
+      Use the menu to manage students, elections, positions, candidates and voters, or to cast your ballot.
+    </p>
+  </section>
+{% endblock %}

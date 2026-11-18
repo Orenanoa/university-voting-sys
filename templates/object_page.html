@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}{{ page.title }}{% endblock %}
+{% block content %}
+  <h1>{{ page.heading }}</h1>
+  <p class="lead">{{ page.lead }}</p>
+
+  {% if form %}
+    <form id="f" class="data-form" method="post" novalidate>
+      {% csrf_token %}
+      {% include 'form_fields.html' %}
+      <p id="msg" role="alert">{% for error in form.non_field_errors %}{{ error }} {% endfor %}</p>
+      <div class="actions">
+        <button type="submit" name="action" value="save" class="green">{{ page.save_label }}</button>
+        {% if page.validate_button %}
+          <button type="submit" name="action" value="validate" class="blue">Validate Ballot</button>
+        {% endif %}
+        {% for b in page.extra_buttons %}
+          <a href="{% url b.url_name %}" class="btn {{ b.css }}">{{ b.label }}</a>
+        {% endfor %}
+      </div>
+    </form>
+  {% else %}
+    <p class="lead">Only staff members can add or change records on this page.</p>
+  {% endif %}
+
+  <h2>{{ page.table_title }}</h2>
+  {% include 'table.html' %}
+{% endblock %}

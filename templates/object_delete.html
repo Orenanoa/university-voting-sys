@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block title %}Delete {{ page.title }}{% endblock %}
+{% block content %}
+  <h1>Delete {{ page.title }}</h1>
+  <p class="lead">Are you sure you want to delete <strong>{{ object }}</strong>? Records linked to it (for example candidates, voters or ballots) will be deleted too.</p>
+  <form class="data-form" method="post">
+    {% csrf_token %}
+    <div class="actions">
+      <button type="submit" class="red">Yes, delete</button>
+      <a href="{% url name %}" class="btn grey">Cancel</a>
+    </div>
+  </form>
+{% endblock %}

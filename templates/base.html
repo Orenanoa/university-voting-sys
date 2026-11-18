@@ -1,0 +1,113 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Home{% endblock %} | Student Voting System</title>
+  <link rel="icon" href="{% static 'images/logo.png' %}">
+  <style>
+    body { margin: 0; min-height: 100vh; font-family: Georgia, 'Times New Roman', serif; background: cornsilk; color: #222; }
+    header { background: #14532d; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 28px; padding: 10px 24px; box-sizing: border-box; width: 100%; }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .brand img { width: 46px; height: 46px; object-fit: contain; background: cornsilk; border-radius: 50%; }
+    .brand span { color: #fff; font-size: 1.1rem; font-weight: bold; }
+    nav { flex: 1; min-width: 300px; }
+    nav ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 4px; }
+    nav a { display: block; padding: 9px 14px; color: #fff; text-decoration: none; border-radius: 4px; }
+    nav a:hover, nav a.active { background: rgba(0,0,0,.3); }
+    nav form { margin: 0; }
+    nav button.logout { padding: 8px 14px; font-size: 1rem; font-weight: normal; font-family: inherit; color: #fff; background: transparent; border: 1px solid rgba(255,255,255,.6); border-radius: 4px; cursor: pointer; }
+    nav button.logout:hover { background: rgba(0,0,0,.3); }
+    main { max-width: 1000px; margin: 0 auto; padding: 32px 40px; box-sizing: border-box; }
+    h1 { margin: 0 0 6px; font-size: 1.9rem; color: #14532d; }
+    h2 { margin: 36px 0 0; font-size: 1.3rem; color: #14532d; }
+    .lead { margin: 0 0 24px; color: #555; }
+    form.data-form { max-width: 440px; display: flex; flex-direction: column; gap: 14px; }
+    label { display: flex; flex-direction: column; gap: 5px; font-weight: bold; }
+    input, select, textarea { padding: 10px; font-size: 1rem; font-family: inherit; border: 1px solid #888; border-radius: 4px; }
+    input:disabled { background: #eee; color: #555; }
+    textarea { min-height: 90px; resize: vertical; }
+    span.error { color: #b00020; font-weight: normal; font-size: .9rem; }
+    #msg { margin: 0; min-height: 1.2em; color: #b00020; font-weight: bold; }
+    .message { margin: 0 0 16px; padding: 10px 14px; border-radius: 4px; font-weight: bold; }
+    .message.success { background: #d1e7dd; color: #14532d; }
+    .message.error { background: #f8d7da; color: #842029; }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; }
+    button, .btn { padding: 10px 16px; font-size: 1rem; font-weight: bold; font-family: inherit; color: #fff; border: 0; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; }
+    .small { padding: 5px 10px; font-size: .85rem; }
+    .green { background: #14532d; }
+    .dark { background: #333; }
+    .red { background: #b00020; }
+    .blue { background: #0b5ed7; }
+    .grey { background: #777; }
+    form.inline { display: inline; margin: 0; }
+    .table-wrap { overflow-x: auto; margin-top: 12px; }
+    table { border-collapse: collapse; background: #fff; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 8px 10px; text-align: left; }
+    th { background: #eee; }
+    tbody tr:nth-child(even) { background: #f7f7f2; }
+    td.row-actions { white-space: nowrap; }
+    section { max-width: 640px; line-height: 1.65; font-size: 1.05rem; }
+    section h2 { margin-top: 0; }
+    section p { margin: 0 0 14px; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <img src="{% static 'images/logo.png' %}" alt="IUIU logo">
+      <span>Student Voting System</span>
+    </div>
+    <nav aria-label="Main menu">
+      <ul>
+        <li><a href="{% url 'home' %}" {% if request.path == '/' %}class="active"{% endif %}>Home</a></li>
+        <li><a href="{% url 'students' %}" {% if '/students/' in request.path %}class="active"{% endif %}>Students</a></li>
+        <li><a href="{% url 'election' %}" {% if '/election/' in request.path %}class="active"{% endif %}>Election</a></li>
+        <li><a href="{% url 'position' %}" {% if '/position/' in request.path %}class="active"{% endif %}>Position</a></li>
+        <li><a href="{% url 'candidate' %}" {% if '/candidate/' in request.path %}class="active"{% endif %}>Candidate</a></li>
+        <li><a href="{% url 'voter' %}" {% if '/voter/' in request.path %}class="active"{% endif %}>Voter</a></li>
+        <li><a href="{% url 'ballot' %}" {% if '/ballot/' in request.path %}class="active"{% endif %}>Ballot</a></li>
+        <li><a href="{% url 'results' %}" {% if '/results/' in request.path %}class="active"{% endif %}>Results</a></li>
+        <li>
+          <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+            <button type="submit" class="logout">Log out ({{ user.username }})</button>
+          </form>
+        </li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    {% for message in messages %}
+      <p class="message {{ message.tags }}">{{ message }}</p>
+    {% endfor %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <script>
+    // 1. Do not submit a form when one of its fields is empty
+    var form = document.getElementById("f");
+    if (form) {
+      form.addEventListener("submit", function (e) {
+        var msg = document.getElementById("msg");
+        var fields = form.querySelectorAll("input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled])");
+        for (var i = 0; i < fields.length; i++) {
+          if (fields[i].value.trim() === "") {
+            e.preventDefault();
+            var label = fields[i].closest("label");
+            msg.textContent = "Fill in: " + (label ? label.childNodes[0].textContent.trim() : fields[i].name);
+            fields[i].focus();
+            return;
+          }
+        }
+      });
+    }
+
+    // 2. Show an alert after a successful action (saved, updated, deleted, logged in ...)
+    var okMessages = [{% for message in messages %}{% if message.tags == 'success' %}"{{ message|escapejs }}",{% endif %}{% endfor %}];
+    if (okMessages.length > 0) { alert(okMessages.join("\n")); }
+  </script>
+</body>
+</html>
